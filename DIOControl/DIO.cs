@@ -125,6 +125,63 @@ namespace DIOControl
             BlinkTd.Start();
         }
 
+        //private void Blink()
+        //{
+        //    string Current = "TRUE";
+        //    while (true)
+        //    {
+        //        var find = from Out in Controls.Values.ToList()
+        //                   where Out.Status.Equals("Blink")
+        //                   select Out;
+        //        foreach (ControlConfig each in find)
+        //        {
+        //            IController ctrl;
+        //            if (Ctrls.TryGetValue(each.DeviceName, out ctrl))
+        //            {
+        //                try
+        //                {
+        //                    ctrl.SetOut(each.Address, Current);
+        //                }
+        //                catch (Exception e)
+        //                {
+        //                    logger.Error(e.StackTrace);
+        //                }
+        //                //_Report.On_Data_Chnaged(each.Parameter, Current);
+        //            }
+        //            else
+        //            {
+        //                logger.Debug("SetIO:DeviceName is not exist.");
+        //            }
+        //        }
+        //        if (Current.Equals("TRUE"))
+        //        {
+        //            Current = "FALSE";
+        //        }
+        //        else
+        //        {
+        //            Current = "TRUE";
+        //        }
+
+        //        var inCfg = from parm in Params.Values.ToList()
+        //                    where parm.Parameter.Equals("IONIZERALARM")
+        //                    select parm;
+
+
+        //        ParamConfig Cfg = inCfg.First();
+
+        //        string key = Cfg.DeviceName + Cfg.Address + Cfg.Type;
+        //        if (Cfg.Abnormal.Equals(GetIO("IN", key).ToUpper()))
+        //        {
+        //            _Report.On_Data_Chnaged(Cfg.Parameter, "BLINK");
+        //        }
+
+
+
+
+        //        SpinWait.SpinUntil(() => false, 700);
+        //    }
+        //}
+
         private void Blink()
         {
             string Current = "TRUE";
@@ -133,6 +190,7 @@ namespace DIOControl
                 var find = from Out in Controls.Values.ToList()
                            where Out.Status.Equals("Blink")
                            select Out;
+                Dictionary<string, IController> DIOList = new Dictionary<string, IController>();
                 foreach (ControlConfig each in find)
                 {
                     IController ctrl;
@@ -140,19 +198,28 @@ namespace DIOControl
                     {
                         try
                         {
-                            ctrl.SetOut(each.Address, Current);
+                            ctrl.SetOutWithoutUpdate(each.Address, Current);
+                            if (!DIOList.ContainsKey(each.DeviceName))
+                            {
+                                DIOList.Add(each.DeviceName, ctrl);
+                            }
                         }
                         catch (Exception e)
                         {
                             logger.Error(e.StackTrace);
                         }
-                        _Report.On_Data_Chnaged(each.Parameter, Current);
+                        //_Report.On_Data_Chnaged(each.Parameter, Current);
                     }
                     else
                     {
                         logger.Debug("SetIO:DeviceName is not exist.");
                     }
                 }
+                foreach (IController eachDIO in DIOList.Values)
+                {
+                    eachDIO.UpdateOut();
+                }
+
                 if (Current.Equals("TRUE"))
                 {
                     Current = "FALSE";
@@ -271,6 +338,7 @@ namespace DIOControl
                             ChangeHisRecord.New(ctrlCfg.DeviceName, ctrlCfg.Type, ctrlCfg.Address, ctrlCfg.Parameter, "Blink", ctrlCfg.Status);
                         }
                         ctrlCfg.Status = "Blink";
+                        _Report.On_Data_Chnaged(Parameter, "BLINK");
                     }
                     else
                     {
@@ -278,6 +346,8 @@ namespace DIOControl
                         {
                             ChangeHisRecord.New(ctrlCfg.DeviceName, ctrlCfg.Type, ctrlCfg.Address, ctrlCfg.Parameter, "False", ctrlCfg.Status);
                         }
+                        ctrlCfg.Status = "False";
+                        _Report.On_Data_Chnaged(Parameter, "FALSE");
                     }
 
                 }
@@ -289,6 +359,37 @@ namespace DIOControl
             catch (Exception e)
             {
                 logger.Debug("SetBlink:" + e.Message);
+            }
+            return result;
+        }
+
+        public string GetALL()
+        {
+            string result = "";
+            foreach (ControlConfig outCfg in Controls.Values)
+            {                            
+                IController ctrl;
+                if (Ctrls.TryGetValue(outCfg.DeviceName, out ctrl))
+                {
+                    if (!result.Equals(""))
+                    {
+                        result += ","; 
+                    }
+                    result += outCfg.Parameter +"="+ ctrl.GetOut(outCfg.Address);
+                }
+            }
+            foreach (ParamConfig outCfg in Params.Values)
+            {
+                IController ctrl;
+                if (Ctrls.TryGetValue(outCfg.DeviceName, out ctrl))
+                {
+                    if (!result.Equals(""))
+                    {
+                        result += ",";
+                    }
+                    //result += outCfg.Parameter + "=" + ctrl.GetOut(outCfg.Address);
+                    result += outCfg.Parameter + "=" + "True";
+                }
             }
             return result;
         }
