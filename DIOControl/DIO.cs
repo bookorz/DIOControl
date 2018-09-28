@@ -72,7 +72,7 @@ namespace DIOControl
             string str_json = JsonConvert.SerializeObject(dt, Formatting.Indented);
 
             List<CtrlConfig> ctrlList = JsonConvert.DeserializeObject<List<CtrlConfig>>(str_json);
-
+           // List<CtrlConfig> ctrlList = new List<CtrlConfig>();
             foreach (CtrlConfig each in ctrlList)
             {
                 IController eachCtrl = null;
