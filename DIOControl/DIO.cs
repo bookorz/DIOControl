@@ -95,8 +95,8 @@ namespace DIOControl
 
 
             Sql = @"select t.dioname DeviceName,t.`type` 'Type',t.address ,upper(t.Parameter) Parameter,t.abnormal,t.error_code  from config_dio_point t
-                    where t.`type` = 'IN'";
-            dt = dBUtil.GetDataTable(Sql, null);
+                    where t.`type` = 'IN' and t.equipment_model_id = @equipment_model_id";
+            dt = dBUtil.GetDataTable(Sql, keyValues);
             str_json = JsonConvert.SerializeObject(dt, Formatting.Indented);
 
             List<ParamConfig> ParamList = JsonConvert.DeserializeObject<List<ParamConfig>>(str_json);
@@ -108,8 +108,8 @@ namespace DIOControl
             }
 
             Sql = @"select t.dioname DeviceName,t.`type` 'Type',t.address ,upper(t.Parameter) Parameter,t.abnormal,t.error_code  from config_dio_point t
-                    where t.`type` = 'OUT'";
-            dt = dBUtil.GetDataTable(Sql, null);
+                    where t.`type` = 'OUT' and t.equipment_model_id = @equipment_model_id";
+            dt = dBUtil.GetDataTable(Sql, keyValues);
             str_json = JsonConvert.SerializeObject(dt, Formatting.Indented);
 
             List<ControlConfig> CList = JsonConvert.DeserializeObject<List<ControlConfig>>(str_json);

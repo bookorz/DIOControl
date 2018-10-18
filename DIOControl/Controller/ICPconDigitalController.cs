@@ -271,6 +271,10 @@ namespace DIOControl.Controller
             bool result = false;
             try
             {
+                if (Master == null)
+                {
+                    return "";
+                }
                 lock (Master)
                 {
                     result = Master.ReadCoils(_Cfg.slaveID, Convert.ToUInt16(Address), 1)[0];
