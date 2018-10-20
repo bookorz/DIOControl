@@ -72,7 +72,7 @@ namespace DIOControl
             string str_json = JsonConvert.SerializeObject(dt, Formatting.Indented);
 
             List<CtrlConfig> ctrlList = JsonConvert.DeserializeObject<List<CtrlConfig>>(str_json);
-           // List<CtrlConfig> ctrlList = new List<CtrlConfig>();
+            // List<CtrlConfig> ctrlList = new List<CtrlConfig>();
             foreach (CtrlConfig each in ctrlList)
             {
                 IController eachCtrl = null;
@@ -229,18 +229,18 @@ namespace DIOControl
                     Current = "TRUE";
                 }
 
-                var inCfg = from parm in Params.Values.ToList()
-                            where parm.Parameter.Equals("IONIZERALARM")
-                            select parm;
+                //var inCfg = from parm in Params.Values.ToList()
+                //            where parm.Parameter.Equals("IONIZERALARM")
+                //            select parm;
 
 
-                ParamConfig Cfg = inCfg.First();
+                //ParamConfig Cfg = inCfg.First();
 
-                string key = Cfg.DeviceName + Cfg.Address + Cfg.Type;
-                if (Cfg.Abnormal.Equals(GetIO("IN", key).ToUpper()))
-                {
-                    _Report.On_Data_Chnaged(Cfg.Parameter, "BLINK");
-                }
+                //string key = Cfg.DeviceName + Cfg.Address + Cfg.Type;
+                //if (Cfg.Abnormal.Equals(GetIO("IN", key).ToUpper()))
+                //{
+                //    _Report.On_Data_Chnaged(Cfg.Parameter, "BLINK");
+                //}
 
 
 
@@ -255,7 +255,7 @@ namespace DIOControl
             try
             {
                 ControlConfig ctrlCfg;
-                if (Controls.TryGetValue(Parameter, out ctrlCfg))
+                if (Controls.TryGetValue(Parameter.ToUpper(), out ctrlCfg))
                 {
                     IController ctrl;
                     if (Ctrls.TryGetValue(ctrlCfg.DeviceName, out ctrl))
@@ -367,15 +367,15 @@ namespace DIOControl
         {
             string result = "";
             foreach (ControlConfig outCfg in Controls.Values)
-            {                            
+            {
                 IController ctrl;
                 if (Ctrls.TryGetValue(outCfg.DeviceName, out ctrl))
                 {
                     if (!result.Equals(""))
                     {
-                        result += ","; 
+                        result += ",";
                     }
-                    result += outCfg.Parameter +"="+ ctrl.GetOut(outCfg.Address);
+                    result += outCfg.Parameter + "=" + ctrl.GetOut(outCfg.Address);
                 }
             }
             foreach (ParamConfig outCfg in Params.Values)
@@ -414,9 +414,16 @@ namespace DIOControl
                 }
                 else
                 {
-                    ParamConfig inCfg;
-                    if (Params.TryGetValue(Parameter, out inCfg))
+
+                    var find = from Param in Params.Values.ToList()
+                               where Param.Parameter.ToUpper().Equals(Parameter.ToUpper())
+                               select Param;
+
+
+                    if (find.Count() != 0)
                     {
+                        ParamConfig inCfg;
+                        inCfg = find.First();
                         IController ctrl;
                         if (Ctrls.TryGetValue(inCfg.DeviceName, out ctrl))
                         {
@@ -442,19 +449,22 @@ namespace DIOControl
                 if (NewValue.ToUpper().Equals(param.Abnormal))
                 {
                     NewValue = "False";
-                    if (param.LastErrorHappenTime == null)
+                    if (!param.Error_Code.Equals("N/A"))
                     {
-                        param.LastErrorHappenTime = DateTime.Now;
-                    }
-                    else
-                    {
-                        TimeSpan t = DateTime.Now - param.LastErrorHappenTime;
-                        if (t.TotalSeconds > 1)
+                        if (param.LastErrorHappenTime == null)
                         {
                             param.LastErrorHappenTime = DateTime.Now;
-                            _Report.On_Alarm_Happen(param.Parameter, param.Error_Code);
                         }
+                        else
+                        {
+                            TimeSpan t = DateTime.Now - param.LastErrorHappenTime;
+                            if (t.TotalSeconds > 1)
+                            {
+                                param.LastErrorHappenTime = DateTime.Now;
+                                _Report.On_Alarm_Happen(param.Parameter, param.Error_Code);
+                            }
 
+                        }
                     }
                 }
                 else
@@ -466,7 +476,7 @@ namespace DIOControl
                 {
                     ChangeHisRecord.New(DIOName, Type, Address, param.Parameter, NewValue, OldValue);
                 }
-                
+
             }
 
         }
