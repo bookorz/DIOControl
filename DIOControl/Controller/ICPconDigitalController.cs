@@ -113,6 +113,7 @@ namespace DIOControl.Controller
                     catch (Exception e)
                     {
                         _Report.On_Connection_Error(_Cfg.DeviceName, "Disconnect");
+                        Master.Dispose();
                         break;
                     }
                     for (int i = 0; i < _Cfg.DigitalInputQuantity; i++)

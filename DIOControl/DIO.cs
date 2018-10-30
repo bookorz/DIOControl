@@ -483,7 +483,14 @@ namespace DIOControl
 
         public void On_Connection_Error(string DIOName, string ErrorMsg)
         {
-            _Report.On_Connection_Error(DIOName, ErrorMsg);
+            //斷線重連
+            SpinWait.SpinUntil(() => false, 1000);
+            IController dio;
+            if(Ctrls.TryGetValue(DIOName,out dio))
+            {
+                dio.Connect();
+            }
+            //_Report.On_Connection_Error(DIOName, ErrorMsg);
         }
 
         public void On_Connection_Status_Report(string DIOName, string Status)
