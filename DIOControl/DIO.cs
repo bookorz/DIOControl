@@ -76,20 +76,23 @@ namespace DIOControl
             foreach (CtrlConfig each in ctrlList)
             {
                 IController eachCtrl = null;
-                switch (each.Vendor)
+                if (each.Enable)
                 {
-                    case "ICPCONDIGITAL":
-                        each.slaveID = 1;
-                        each.DigitalInputQuantity = 8;
-                        each.Delay = 100;
-                        each.ReadTimeout = 1000;
-                        eachCtrl = new ICPconDigitalController(each, this);
+                    switch (each.Vendor)
+                    {
+                        case "ICPCONDIGITAL":
+                            each.slaveID = 1;
+                            each.DigitalInputQuantity = 8;
+                            each.Delay = 100;
+                            each.ReadTimeout = 1000;
+                            eachCtrl = new ICPconDigitalController(each, this);
 
-                        break;
-                }
-                if (eachCtrl != null)
-                {
-                    Ctrls.TryAdd(each.DeviceName, eachCtrl);
+                            break;
+                    }
+                    if (eachCtrl != null)
+                    {
+                        Ctrls.TryAdd(each.DeviceName, eachCtrl);
+                    }
                 }
             }
 

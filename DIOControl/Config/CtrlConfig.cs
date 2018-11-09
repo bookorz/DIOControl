@@ -24,5 +24,6 @@ namespace DIOControl.Config
         public int DigitalInputQuantity { get; set; }
         public int Delay { get; set; }
         public byte slaveID { get; set; }
+        public bool Enable { get; set; }
     }
 }
