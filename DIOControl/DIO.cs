@@ -211,7 +211,7 @@ namespace DIOControl
                         {
                             logger.Error(e.StackTrace);
                         }
-                        //_Report.On_Data_Chnaged(each.Parameter, Current);
+                        _Report.On_Data_Chnaged(each.Parameter, Current);
                     }
                     else
                     {
