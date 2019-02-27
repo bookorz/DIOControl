@@ -19,7 +19,7 @@ namespace DIOControl
     {
         private static readonly ILog logger = LogManager.GetLogger(typeof(DIO));
         IDIOTriggerReport _Report;
-        ConcurrentDictionary<string, IController> Ctrls;
+        ConcurrentDictionary<string, IDIOController> Ctrls;
         ConcurrentDictionary<string, ParamConfig> Params;
         ConcurrentDictionary<string, ControlConfig> Controls;
         private static DBUtil dBUtil = new DBUtil();
@@ -34,7 +34,7 @@ namespace DIOControl
 
         public void Connect()
         {
-            foreach (IController each in Ctrls.Values)
+            foreach (IDIOController each in Ctrls.Values)
             {
                 each.Connect();
             }
@@ -42,7 +42,7 @@ namespace DIOControl
 
         public void Close()
         {
-            foreach (IController each in Ctrls.Values)
+            foreach (IDIOController each in Ctrls.Values)
             {
                 each.Close();
             }
@@ -50,7 +50,7 @@ namespace DIOControl
 
         public void Initial()
         {
-            Ctrls = new ConcurrentDictionary<string, IController>();
+            Ctrls = new ConcurrentDictionary<string, IDIOController>();
             Params = new ConcurrentDictionary<string, ParamConfig>();
             Controls = new ConcurrentDictionary<string, ControlConfig>();
             Dictionary<string, object> keyValues = new Dictionary<string, object>();
@@ -75,7 +75,7 @@ namespace DIOControl
             // List<CtrlConfig> ctrlList = new List<CtrlConfig>();
             foreach (CtrlConfig each in ctrlList)
             {
-                IController eachCtrl = null;
+                IDIOController eachCtrl = null;
                 if (each.Enable)
                 {
                     switch (each.Vendor)
@@ -193,10 +193,10 @@ namespace DIOControl
                 var find = from Out in Controls.Values.ToList()
                            where Out.Status.Equals("Blink")
                            select Out;
-                Dictionary<string, IController> DIOList = new Dictionary<string, IController>();
+                Dictionary<string, IDIOController> DIOList = new Dictionary<string, IDIOController>();
                 foreach (ControlConfig each in find)
                 {
-                    IController ctrl;
+                    IDIOController ctrl;
                     if (Ctrls.TryGetValue(each.DeviceName, out ctrl))
                     {
                         try
@@ -218,7 +218,7 @@ namespace DIOControl
                         logger.Debug("SetIO:DeviceName is not exist.");
                     }
                 }
-                foreach (IController eachDIO in DIOList.Values)
+                foreach (IDIOController eachDIO in DIOList.Values)
                 {
                     eachDIO.UpdateOut();
                 }
@@ -260,7 +260,7 @@ namespace DIOControl
                 ControlConfig ctrlCfg;
                 if (Controls.TryGetValue(Parameter.ToUpper(), out ctrlCfg))
                 {
-                    IController ctrl;
+                    IDIOController ctrl;
                     if (Ctrls.TryGetValue(ctrlCfg.DeviceName, out ctrl))
                     {
                         ChangeHisRecord.New(ctrlCfg.DeviceName, ctrlCfg.Type, ctrlCfg.Address, ctrlCfg.Parameter, Value, ctrlCfg.Status);
@@ -287,7 +287,7 @@ namespace DIOControl
 
         public void SetIO(Dictionary<string, string> Params)
         {
-            Dictionary<string, IController> DIOList = new Dictionary<string, IController>();
+            Dictionary<string, IDIOController> DIOList = new Dictionary<string, IDIOController>();
             foreach (string key in Params.Keys)
             {
                 string Value = "";
@@ -295,7 +295,7 @@ namespace DIOControl
                 ControlConfig ctrlCfg;
                 if (Controls.TryGetValue(key.ToUpper(), out ctrlCfg))
                 {
-                    IController ctrl;
+                    IDIOController ctrl;
                     if (Ctrls.TryGetValue(ctrlCfg.DeviceName, out ctrl))
                     {
                         if (!Value.Equals(ctrlCfg.Status))
@@ -320,7 +320,7 @@ namespace DIOControl
                     logger.Debug("SetIO:Parameter is not exist.");
                 }
             }
-            foreach (IController eachDIO in DIOList.Values)
+            foreach (IDIOController eachDIO in DIOList.Values)
             {
                 eachDIO.UpdateOut();
             }
@@ -371,7 +371,7 @@ namespace DIOControl
             string result = "";
             foreach (ControlConfig outCfg in Controls.Values)
             {
-                IController ctrl;
+                IDIOController ctrl;
                 if (Ctrls.TryGetValue(outCfg.DeviceName, out ctrl))
                 {
                     if (!result.Equals(""))
@@ -383,7 +383,7 @@ namespace DIOControl
             }
             foreach (ParamConfig outCfg in Params.Values)
             {
-                IController ctrl;
+                IDIOController ctrl;
                 if (Ctrls.TryGetValue(outCfg.DeviceName, out ctrl))
                 {
                     if (!result.Equals(""))
@@ -408,7 +408,7 @@ namespace DIOControl
                     ControlConfig outCfg;
                     if (Controls.TryGetValue(Parameter, out outCfg))
                     {
-                        IController ctrl;
+                        IDIOController ctrl;
                         if (Ctrls.TryGetValue(outCfg.DeviceName, out ctrl))
                         {
                             result = ctrl.GetOut(outCfg.Address);
@@ -427,7 +427,7 @@ namespace DIOControl
                     {
                         ParamConfig inCfg;
                         inCfg = find.First();
-                        IController ctrl;
+                        IDIOController ctrl;
                         if (Ctrls.TryGetValue(inCfg.DeviceName, out ctrl))
                         {
                             result = ctrl.GetIn(inCfg.Address);
@@ -488,7 +488,7 @@ namespace DIOControl
         {
             //斷線重連
             SpinWait.SpinUntil(() => false, 1000);
-            IController dio;
+            IDIOController dio;
             if(Ctrls.TryGetValue(DIOName,out dio))
             {
                 dio.Connect();

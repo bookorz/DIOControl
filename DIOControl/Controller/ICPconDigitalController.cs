@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace DIOControl.Controller
 {
-    class ICPconDigitalController : IController
+    class ICPconDigitalController : IDIOController
     {
         ILog logger = LogManager.GetLogger(typeof(ICPconDigitalController));
         IDIOReport _Report;
