@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace DIOControl.Controller
 {
-    interface IController
+    interface IDIOController
     {
         void SetOut(string Address,string Value);
         void SetOutWithoutUpdate(string Address, string Value);
