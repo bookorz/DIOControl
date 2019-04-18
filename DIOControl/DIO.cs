@@ -56,12 +56,9 @@ namespace DIOControl
             Dictionary<string, object> keyValues = new Dictionary<string, object>();
             string Sql = @"SELECT t.device_name as DeviceName,t.device_type as DeviceType,t.vendor as vendor,
                             case when t.conn_type = 'Socket' then  t.conn_address else '' end as IPAdress ,
-                            case when t.conn_type = 'Socket' then  CONVERT(t.conn_prot,SIGNED) else 0 end as Port ,
-                            case when t.conn_type = 'Comport' then   CONVERT(t.conn_prot,SIGNED) else 0 end as BaudRate ,
-                            case when t.conn_type = 'Comport' then  t.conn_address else '' end as PortName ,
-                            t.com_parity_bit as ParityBit,
-                            ifnull(CONVERT(t.com_data_bits,SIGNED),0) as DataBits,
-                            t.com_stop_bit as StopBit,
+                            case when t.conn_type = 'Socket' then  CONVERT(t.conn_port,SIGNED) else 0 end as Port ,
+                            case when t.conn_type = 'Comport' then   CONVERT(t.conn_port,SIGNED) else 0 end as BaudRate ,
+                            case when t.conn_type = 'Comport' then  t.conn_address else '' end as PortName ,             
                             t.conn_type as ConnectionType,
                             t.enable_flg as Enable
                             FROM config_controller_setting t
@@ -98,7 +95,7 @@ namespace DIOControl
 
 
             Sql = @"select t.dioname DeviceName,t.`type` 'Type',t.address ,upper(t.Parameter) Parameter,t.abnormal,t.error_code  from config_dio_point t
-                    where t.`type` = 'IN' and t.equipment_model_id = @equipment_model_id";
+                    where t.`type` in ('AIN','DIN') and t.equipment_model_id = @equipment_model_id";
             dt = dBUtil.GetDataTable(Sql, keyValues);
             str_json = JsonConvert.SerializeObject(dt, Formatting.Indented);
 
@@ -107,11 +104,12 @@ namespace DIOControl
 
             foreach (ParamConfig each in ParamList)
             {
+
                 Params.TryAdd(each.DeviceName + each.Address + each.Type, each);
             }
 
             Sql = @"select t.dioname DeviceName,t.`type` 'Type',t.address ,upper(t.Parameter) Parameter,t.abnormal,t.error_code  from config_dio_point t
-                    where t.`type` = 'OUT' and t.equipment_model_id = @equipment_model_id";
+                    where t.`type` in ('AOUT','DOUT')  and t.equipment_model_id = @equipment_model_id";
             dt = dBUtil.GetDataTable(Sql, keyValues);
             str_json = JsonConvert.SerializeObject(dt, Formatting.Indented);
 
@@ -449,36 +447,40 @@ namespace DIOControl
             if (Params.ContainsKey(key))
             {
                 Params.TryGetValue(key, out param);
-                if (NewValue.ToUpper().Equals(param.Abnormal))
+                if (param.Type.Equals("DIN") || param.Type.Equals("DOUT"))
                 {
-                    NewValue = "False";
-                    if (!param.Error_Code.Equals("N/A"))
+                    if (NewValue.ToUpper().Equals(param.Abnormal))
                     {
-                        if (param.LastErrorHappenTime == null)
+                        NewValue = "False";
+                        if (!param.Error_Code.Equals("N/A"))
                         {
-                            param.LastErrorHappenTime = DateTime.Now;
-                        }
-                        else
-                        {
-                            TimeSpan t = DateTime.Now - param.LastErrorHappenTime;
-                            if (t.TotalSeconds > 1)
+                            if (param.LastErrorHappenTime == null)
                             {
                                 param.LastErrorHappenTime = DateTime.Now;
-                                _Report.On_Alarm_Happen(param.Parameter, param.Error_Code);
                             }
+                            else
+                            {
+                                TimeSpan t = DateTime.Now - param.LastErrorHappenTime;
+                                if (t.TotalSeconds > 1)
+                                {
+                                    param.LastErrorHappenTime = DateTime.Now;
+                                    _Report.On_Alarm_Happen(param.Parameter, param.Error_Code);
+                                }
 
+                            }
                         }
                     }
+                    else
+                    {
+                        NewValue = "TRUE";
+                    }
                 }
-                else
-                {
-                    NewValue = "TRUE";
-                }
+               
                 _Report.On_Data_Chnaged(param.Parameter, NewValue);
-                if (Type.Equals("IN"))
-                {
-                    ChangeHisRecord.New(DIOName, Type, Address, param.Parameter, NewValue, OldValue);
-                }
+                //if (Type.Equals("IN"))
+                //{
+                //    ChangeHisRecord.New(DIOName, Type, Address, param.Parameter, NewValue, OldValue);
+                //}
 
             }
 
@@ -489,7 +491,7 @@ namespace DIOControl
             //斷線重連
             SpinWait.SpinUntil(() => false, 1000);
             IDIOController dio;
-            if(Ctrls.TryGetValue(DIOName,out dio))
+            if (Ctrls.TryGetValue(DIOName, out dio))
             {
                 dio.Connect();
             }
