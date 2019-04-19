@@ -21,7 +21,7 @@ namespace DIOControl
         IDIOTriggerReport _Report;
         ConcurrentDictionary<string, IDIOController> Ctrls;
         ConcurrentDictionary<string, ParamConfig> Params;
-        ConcurrentDictionary<string, ControlConfig> Controls;
+        ConcurrentDictionary<string, ParamConfig> Controls;
         private static DBUtil dBUtil = new DBUtil();
 
         public DIO(IDIOTriggerReport ReportTarget)
@@ -52,9 +52,36 @@ namespace DIOControl
         {
             Ctrls = new ConcurrentDictionary<string, IDIOController>();
             Params = new ConcurrentDictionary<string, ParamConfig>();
-            Controls = new ConcurrentDictionary<string, ControlConfig>();
+            Controls = new ConcurrentDictionary<string, ParamConfig>();
             Dictionary<string, object> keyValues = new Dictionary<string, object>();
-            string Sql = @"SELECT t.device_name as DeviceName,t.device_type as DeviceType,t.vendor as vendor,
+            keyValues.Add("@equipment_model_id", SystemConfig.Get().SystemMode);
+
+
+
+            string Sql = @"select t.dioname DeviceName,t.`type` 'Type',t.address ,upper(t.Parameter) Parameter,t.abnormal,t.error_code  from config_dio_point t
+                    where  t.equipment_model_id = @equipment_model_id";
+            DataTable dt = dBUtil.GetDataTable(Sql, keyValues);
+            string str_json = JsonConvert.SerializeObject(dt, Formatting.Indented);
+
+            List<ParamConfig> ParamList = JsonConvert.DeserializeObject<List<ParamConfig>>(str_json);
+
+
+            foreach (ParamConfig each in ParamList)
+            {
+                if (each.Type.ToUpper().Equals("AIN") || each.Type.ToUpper().Equals("DIN"))
+                {
+
+                    Params.TryAdd(each.DeviceName + each.Address + each.Type, each);
+                }
+                else if (each.Type.ToUpper().Equals("AOUT") || each.Type.ToUpper().Equals("DOUT"))
+                {
+
+                    each.Status = "N/A";
+                    Controls.TryAdd(each.Parameter, each);
+                }
+            }
+
+            Sql = @"SELECT t.device_name as DeviceName,t.device_type as DeviceType,t.vendor as vendor,
                             case when t.conn_type = 'Socket' then  t.conn_address else '' end as IPAdress ,
                             case when t.conn_type = 'Socket' then  CONVERT(t.conn_port,SIGNED) else 0 end as Port ,
                             case when t.conn_type = 'Comport' then   CONVERT(t.conn_port,SIGNED) else 0 end as BaudRate ,
@@ -64,9 +91,9 @@ namespace DIOControl
                             FROM config_controller_setting t
                             WHERE t.equipment_model_id = @equipment_model_id
                             AND t.device_type = 'DIO'";
-            keyValues.Add("@equipment_model_id", SystemConfig.Get().SystemMode);
-            DataTable dt = dBUtil.GetDataTable(Sql, keyValues);
-            string str_json = JsonConvert.SerializeObject(dt, Formatting.Indented);
+
+            dt = dBUtil.GetDataTable(Sql, keyValues);
+            str_json = JsonConvert.SerializeObject(dt, Formatting.Indented);
 
             List<CtrlConfig> ctrlList = JsonConvert.DeserializeObject<List<CtrlConfig>>(str_json);
             // List<CtrlConfig> ctrlList = new List<CtrlConfig>();
@@ -78,6 +105,37 @@ namespace DIOControl
                     switch (each.Vendor)
                     {
                         case "ICPCONDIGITAL":
+                            var find = from Param in Params.Values.ToList()
+                                       where Param.DeviceName.ToUpper().Equals(each.DeviceName.ToUpper())
+                                       select Param;
+                            foreach(ParamConfig eachDio in find)
+                            {
+                                if (eachDio.Type.ToUpper().Equals("DIN") || eachDio.Type.ToUpper().Equals("DOUT"))
+                                {
+                                    each.Digital = true;
+                                }
+                                else if (eachDio.Type.ToUpper().Equals("AIN") || eachDio.Type.ToUpper().Equals("AOUT"))
+                                {
+                                    each.Analog = true;
+                                }
+                            }
+
+                            find = from Param in Controls.Values.ToList()
+                                   where Param.DeviceName.ToUpper().Equals(each.DeviceName.ToUpper())
+                                   select Param;
+                            foreach (ParamConfig eachDio in find)
+                            {
+                                if (eachDio.Type.ToUpper().Equals("DIN") || eachDio.Type.ToUpper().Equals("DOUT"))
+                                {
+                                    each.Digital = true;
+                                }
+                                else if (eachDio.Type.ToUpper().Equals("AIN") || eachDio.Type.ToUpper().Equals("AOUT"))
+                                {
+                                    each.Analog = true;
+                                }
+                            }
+
+
                             each.slaveID = 1;
                             each.DigitalInputQuantity = 8;
                             each.Delay = 100;
@@ -94,95 +152,10 @@ namespace DIOControl
             }
 
 
-            Sql = @"select t.dioname DeviceName,t.`type` 'Type',t.address ,upper(t.Parameter) Parameter,t.abnormal,t.error_code  from config_dio_point t
-                    where t.`type` in ('AIN','DIN') and t.equipment_model_id = @equipment_model_id";
-            dt = dBUtil.GetDataTable(Sql, keyValues);
-            str_json = JsonConvert.SerializeObject(dt, Formatting.Indented);
-
-            List<ParamConfig> ParamList = JsonConvert.DeserializeObject<List<ParamConfig>>(str_json);
-
-
-            foreach (ParamConfig each in ParamList)
-            {
-
-                Params.TryAdd(each.DeviceName + each.Address + each.Type, each);
-            }
-
-            Sql = @"select t.dioname DeviceName,t.`type` 'Type',t.address ,upper(t.Parameter) Parameter,t.abnormal,t.error_code  from config_dio_point t
-                    where t.`type` in ('AOUT','DOUT')  and t.equipment_model_id = @equipment_model_id";
-            dt = dBUtil.GetDataTable(Sql, keyValues);
-            str_json = JsonConvert.SerializeObject(dt, Formatting.Indented);
-
-            List<ControlConfig> CList = JsonConvert.DeserializeObject<List<ControlConfig>>(str_json);
-            foreach (ControlConfig each in CList)
-            {
-                each.Status = "N/A";
-                Controls.TryAdd(each.Parameter, each);
-            }
-
-
             Thread BlinkTd = new Thread(Blink);
             BlinkTd.IsBackground = true;
             BlinkTd.Start();
         }
-
-        //private void Blink()
-        //{
-        //    string Current = "TRUE";
-        //    while (true)
-        //    {
-        //        var find = from Out in Controls.Values.ToList()
-        //                   where Out.Status.Equals("Blink")
-        //                   select Out;
-        //        foreach (ControlConfig each in find)
-        //        {
-        //            IController ctrl;
-        //            if (Ctrls.TryGetValue(each.DeviceName, out ctrl))
-        //            {
-        //                try
-        //                {
-        //                    ctrl.SetOut(each.Address, Current);
-        //                }
-        //                catch (Exception e)
-        //                {
-        //                    logger.Error(e.StackTrace);
-        //                }
-        //                //_Report.On_Data_Chnaged(each.Parameter, Current);
-        //            }
-        //            else
-        //            {
-        //                logger.Debug("SetIO:DeviceName is not exist.");
-        //            }
-        //        }
-        //        if (Current.Equals("TRUE"))
-        //        {
-        //            Current = "FALSE";
-        //        }
-        //        else
-        //        {
-        //            Current = "TRUE";
-        //        }
-
-        //        var inCfg = from parm in Params.Values.ToList()
-        //                    where parm.Parameter.Equals("IONIZERALARM")
-        //                    select parm;
-
-
-        //        ParamConfig Cfg = inCfg.First();
-
-        //        string key = Cfg.DeviceName + Cfg.Address + Cfg.Type;
-        //        if (Cfg.Abnormal.Equals(GetIO("IN", key).ToUpper()))
-        //        {
-        //            _Report.On_Data_Chnaged(Cfg.Parameter, "BLINK");
-        //        }
-
-
-
-
-        //        SpinWait.SpinUntil(() => false, 700);
-        //    }
-        //}
-
         private void Blink()
         {
             string Current = "TRUE";
@@ -192,7 +165,7 @@ namespace DIOControl
                            where Out.Status.Equals("Blink")
                            select Out;
                 Dictionary<string, IDIOController> DIOList = new Dictionary<string, IDIOController>();
-                foreach (ControlConfig each in find)
+                foreach (ParamConfig each in find)
                 {
                     IDIOController ctrl;
                     if (Ctrls.TryGetValue(each.DeviceName, out ctrl))
@@ -255,7 +228,7 @@ namespace DIOControl
 
             try
             {
-                ControlConfig ctrlCfg;
+                ParamConfig ctrlCfg;
                 if (Controls.TryGetValue(Parameter.ToUpper(), out ctrlCfg))
                 {
                     IDIOController ctrl;
@@ -290,7 +263,7 @@ namespace DIOControl
             {
                 string Value = "";
                 Params.TryGetValue(key, out Value);
-                ControlConfig ctrlCfg;
+                ParamConfig ctrlCfg;
                 if (Controls.TryGetValue(key.ToUpper(), out ctrlCfg))
                 {
                     IDIOController ctrl;
@@ -329,7 +302,7 @@ namespace DIOControl
             bool result = false;
             try
             {
-                ControlConfig ctrlCfg;
+                ParamConfig ctrlCfg;
                 if (Controls.TryGetValue(Parameter, out ctrlCfg))
                 {
                     if (Value.ToUpper().Equals("TRUE"))
@@ -367,7 +340,7 @@ namespace DIOControl
         public string GetALL()
         {
             string result = "";
-            foreach (ControlConfig outCfg in Controls.Values)
+            foreach (ParamConfig outCfg in Controls.Values)
             {
                 IDIOController ctrl;
                 if (Ctrls.TryGetValue(outCfg.DeviceName, out ctrl))
@@ -403,7 +376,7 @@ namespace DIOControl
             {
                 if (Type.Equals("OUT"))
                 {
-                    ControlConfig outCfg;
+                    ParamConfig outCfg;
                     if (Controls.TryGetValue(Parameter, out outCfg))
                     {
                         IDIOController ctrl;
@@ -475,7 +448,7 @@ namespace DIOControl
                         NewValue = "TRUE";
                     }
                 }
-               
+
                 _Report.On_Data_Chnaged(param.Parameter, NewValue);
                 //if (Type.Equals("IN"))
                 //{
@@ -506,7 +479,7 @@ namespace DIOControl
                            where cfg.DeviceName.Equals(DIOName)
                            select cfg;
 
-                foreach (ControlConfig cfg in find)
+                foreach (ParamConfig cfg in find)
                 {
                     if (cfg.DeviceName.Equals(DIOName))
                     {

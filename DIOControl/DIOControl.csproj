@@ -54,6 +54,7 @@
     <Compile Include="Config\ControlConfig.cs" />
     <Compile Include="Config\CtrlConfig.cs" />
     <Compile Include="Config\ParamConfig.cs" />
+    <Compile Include="Controller\SanwaDigitalController.cs" />
     <Compile Include="Controller\IDIOController.cs" />
     <Compile Include="Controller\ICPconDigitalController.cs" />
     <Compile Include="DIO.cs" />

@@ -99,54 +99,19 @@ namespace DIOControl.Controller
 
         private void Polling()
         {
-            DateTime AnalogRefreshTime = DateTime.Now;
+            DateTime AnalogUpdateTime = DateTime.Now;
             while (true)
             {
                 try
                 {
-                    bool[] Response = new bool[0];
-                    try
+                    if (_Cfg.Digital)
                     {
-                        lock (Master)
-                        {
-                            Response = Master.ReadInputs(_Cfg.slaveID, 0, Convert.ToUInt16(_Cfg.DigitalInputQuantity));
-                        }
-                    }
-                    catch (Exception e)
-                    {
-                        _Report.On_Connection_Error(_Cfg.DeviceName, "Disconnect");
-                        Master.Dispose();
-                        break;
-                    }
-                    for (int i = 0; i < _Cfg.DigitalInputQuantity; i++)
-                    {
-                        if (DIN.ContainsKey(i))
-                        {
-                            bool org;
-                            DIN.TryGetValue(i, out org);
-                            if (!org.Equals(Response[i]))
-                            {
-                                DIN.TryUpdate(i, Response[i], org);
-                                _Report.On_Data_Chnaged(_Cfg.DeviceName, "DIN", i.ToString(), org.ToString(), Response[i].ToString());
-                            }
-                        }
-                        else
-                        {
-                            DIN.TryAdd(i, Response[i]);
-                            _Report.On_Data_Chnaged(_Cfg.DeviceName, "DIN", i.ToString(), "False", Response[i].ToString());
-                        }
-                    }
-                    TimeSpan timeDiff = DateTime.Now - AnalogRefreshTime;
-                    if (timeDiff.TotalMilliseconds > 300)
-                    {
-
-                        ushort[] Response2 = new ushort[0];
+                        bool[] Response = new bool[0];
                         try
                         {
                             lock (Master)
                             {
-                                Response2 = Master.ReadInputRegisters(_Cfg.slaveID, 0, Convert.ToUInt16(_Cfg.DigitalInputQuantity));
-                                AnalogRefreshTime = DateTime.Now;
+                                Response = Master.ReadInputs(_Cfg.slaveID, 0, Convert.ToUInt16(_Cfg.DigitalInputQuantity));
                             }
                         }
                         catch (Exception e)
@@ -157,20 +122,61 @@ namespace DIOControl.Controller
                         }
                         for (int i = 0; i < _Cfg.DigitalInputQuantity; i++)
                         {
-                            if (AIN.ContainsKey(i))
+                            if (DIN.ContainsKey(i))
                             {
-                                ushort org;
-                                AIN.TryGetValue(i, out org);
-                                if (!org.Equals(Response2[i].ToString()))
+                                bool org;
+                                DIN.TryGetValue(i, out org);
+                                if (!org.Equals(Response[i]))
                                 {
-                                    AIN.TryUpdate(i, Response2[i], org);
+                                    DIN.TryUpdate(i, Response[i], org);
+                                    _Report.On_Data_Chnaged(_Cfg.DeviceName, "DIN", i.ToString(), org.ToString(), Response[i].ToString());
                                 }
-                                _Report.On_Data_Chnaged(_Cfg.DeviceName, "AIN", i.ToString(), ((Convert.ToDouble(org) * 10.0 / 32767.0 - 1.0) / 4.0 * 50.0).ToString(), ((Convert.ToDouble(Response2[i]) * 10.0 / 32767.0 - 1.0) / 4.0 * 50.0).ToString().Substring(0, ((Convert.ToDouble(Response2[i]) * 10.0 / 32767.0 - 1.0) / 4.0 * 50.0).ToString().IndexOf(".") + 2));
                             }
                             else
                             {
-                                AIN.TryAdd(i, Response2[i]);
-                                _Report.On_Data_Chnaged(_Cfg.DeviceName, "AIN", i.ToString(), "0", ((Convert.ToDouble(Response2[i]) * 10.0 / 32767.0 - 1.0) / 4.0 * 50.0).ToString().Substring(0, ((Convert.ToDouble(Response2[i]) * 10.0 / 32767.0 - 1.0) / 4.0 * 50.0).ToString().IndexOf(".") + 2));
+                                DIN.TryAdd(i, Response[i]);
+                                _Report.On_Data_Chnaged(_Cfg.DeviceName, "DIN", i.ToString(), "False", Response[i].ToString());
+                            }
+                        }
+                    }
+                    if (_Cfg.Analog)
+                    {
+                        TimeSpan timeDiff = DateTime.Now - AnalogUpdateTime;
+                        if (timeDiff.TotalMilliseconds > 400)
+                        {
+
+                            ushort[] Response2 = new ushort[0];
+                            try
+                            {
+                                lock (Master)
+                                {
+                                    Response2 = Master.ReadInputRegisters(_Cfg.slaveID, 0, Convert.ToUInt16(_Cfg.DigitalInputQuantity));
+                                    AnalogUpdateTime = DateTime.Now;
+                                }
+                            }
+                            catch (Exception e)
+                            {
+                                _Report.On_Connection_Error(_Cfg.DeviceName, "Disconnect");
+                                Master.Dispose();
+                                break;
+                            }
+                            for (int i = 0; i < _Cfg.DigitalInputQuantity; i++)
+                            {
+                                if(AIN.ContainsKey(i))
+                                {
+                                    ushort org;
+                                    AIN.TryGetValue(i, out org);
+                                    if (!org.Equals(Response2[i].ToString()))
+                                    {
+                                        AIN.TryUpdate(i, Response2[i], org);
+                                    }
+                                    _Report.On_Data_Chnaged(_Cfg.DeviceName, "AIN", i.ToString(), ((Convert.ToDouble(org) * 10.0 / 32767.0 - 1.0) / 4.0 * 50.0).ToString(), ((Convert.ToDouble(Response2[i]) * 10.0 / 32767.0 - 1.0) / 4.0 * 50.0).ToString().Substring(0, ((Convert.ToDouble(Response2[i]) * 10.0 / 32767.0 - 1.0) / 4.0 * 50.0).ToString().IndexOf(".") + 2));
+                                }
+                                else
+                                {
+                                    AIN.TryAdd(i, Response2[i]);
+                                    _Report.On_Data_Chnaged(_Cfg.DeviceName, "AIN", i.ToString(), "0", ((Convert.ToDouble(Response2[i]) * 10.0 / 32767.0 - 1.0) / 4.0 * 50.0).ToString().Substring(0, ((Convert.ToDouble(Response2[i]) * 10.0 / 32767.0 - 1.0) / 4.0 * 50.0).ToString().IndexOf(".") + 2));
+                                }
                             }
                         }
                     }

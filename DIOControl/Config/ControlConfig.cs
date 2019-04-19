@@ -6,12 +6,12 @@ using System.Threading.Tasks;
 
 namespace DIOControl.Config
 {
-    class ControlConfig
-    {
-        public string DeviceName { get; set; }
-        public string Type { get; set; }
-        public string Address { get; set; }
-        public string Parameter { get; set; }
-        public string Status { get; set; }
-    }
+    //class ControlConfig
+    //{
+    //    public string DeviceName { get; set; }
+    //    public string Type { get; set; }
+    //    public string Address { get; set; }
+    //    public string Parameter { get; set; }
+    //    public string Status { get; set; }
+    //}
 }
