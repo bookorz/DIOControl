@@ -54,6 +54,9 @@
     <Compile Include="Config\ControlConfig.cs" />
     <Compile Include="Config\CtrlConfig.cs" />
     <Compile Include="Config\ParamConfig.cs" />
+    <Compile Include="Conn\IConnection.cs" />
+    <Compile Include="Conn\IConnectionReport.cs" />
+    <Compile Include="Conn\SocketClient.cs" />
     <Compile Include="Controller\SanwaDigitalController.cs" />
     <Compile Include="Controller\IDIOController.cs" />
     <Compile Include="Controller\ICPconDigitalController.cs" />
