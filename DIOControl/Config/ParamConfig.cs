@@ -16,6 +16,7 @@ namespace DIOControl.Config
         public string Normal { get; set; }
         public string Abnormal { get; set; }
         public string Error_Code { get; set; }
+        public string hwid { get; set; }
         public DateTime LastErrorHappenTime { get; set; }
     }
 }

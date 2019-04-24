@@ -21,8 +21,8 @@ namespace DIOControl.Controller
         bool Waiting = false;
         string ReturnMsg = "";
 
-        ConcurrentDictionary<int, bool> DIN = new ConcurrentDictionary<int, bool>();
-        ConcurrentDictionary<int, bool> DOUT = new ConcurrentDictionary<int, bool>();
+        ConcurrentDictionary<string, bool> DIN = new ConcurrentDictionary<string, bool>();
+        ConcurrentDictionary<string, bool> DOUT = new ConcurrentDictionary<string, bool>();
         public SanwaDigitalController(CtrlConfig Config, IDIOReport TriggerReport)
         {
             _Cfg = Config;
@@ -54,6 +54,8 @@ namespace DIOControl.Controller
                 conn.remotePort = _Cfg.Port;
                 conn.Vendor = "SANWA";
                 conn.Start();
+
+
             }
             catch (Exception e)
             {
@@ -71,45 +73,59 @@ namespace DIOControl.Controller
                     if (_Cfg.Digital)
                     {
                         bool[] Response = new bool[0];
-
+                        string[] valAry;
                         lock (conn)
                         {
-                            conn.Send("$1GET:BRDIO:1,1,1\r");
-                            SpinWait.SpinUntil(() => !Waiting, 5000);
+                            Waiting = true;
+                            conn.Send("$1GET:BRDIO:17,1,3\r");
+                            SpinWait.SpinUntil(() => !Waiting, 50000);
                             if (Waiting)
                             {
                                 logger.Error("DIO polling error: Timeout");
                                 continue;
                             }
-                            string hexStr = ReturnMsg.Split(':')[2];
-                            hexStr = hexStr.Split(',')[3];
+                            string orgAry = ReturnMsg.Split(':')[2];
+                            
+                            valAry = orgAry.Split(',');
+                            
+                        }
+                        int Count = Convert.ToInt32(valAry[2]);
+                        int idx = 3;
+                        int StartNo = Convert.ToInt32(valAry[0]);
+                        for (int x = 0; x <  Count; x++)
+                        {
+
+                            string hexStr = valAry[idx];
                             string binary = String.Join(String.Empty, hexStr.Select(c => Convert.ToString(Convert.ToInt32(c.ToString(), 16), 2).PadLeft(4, '0')));
 
                             Response = new bool[binary.Length];
-
+                            int orgIdx = binary.Length - 1;
                             for (int i = 0; i < binary.Length; i++)
                             {
-                                Response[i] = binary[i] == '1' ? true : false;
+                                Response[orgIdx] = binary[i] == '1' ? true : false;
+                                orgIdx--;
                             }
-                        }
-
-                        for (int i = 0; i < _Cfg.DigitalInputQuantity; i++)
-                        {
-                            if (DIN.ContainsKey(i))
+                            for (int i = 0; i < _Cfg.DigitalInputQuantity; i++)
                             {
-                                bool org;
-                                DIN.TryGetValue(i, out org);
-                                if (!org.Equals(Response[i]))
+                                string addr = StartNo.ToString("00")+"," + i.ToString();
+                                if (DIN.ContainsKey(addr))
                                 {
-                                    DIN.TryUpdate(i, Response[i], org);
-                                    _Report.On_Data_Chnaged(_Cfg.DeviceName, "DIN", i.ToString(), org.ToString(), Response[i].ToString());
+                                    bool org;
+                                    DIN.TryGetValue(addr, out org);
+                                    if (!org.Equals(Response[i]))
+                                    {
+                                        DIN.TryUpdate(addr, Response[i], org);
+                                        _Report.On_Data_Chnaged(_Cfg.DeviceName, "DIN", addr, org.ToString(), Response[i].ToString());
+                                    }
+                                }
+                                else
+                                {
+                                    DIN.TryAdd(addr, Response[i]);
+                                    _Report.On_Data_Chnaged(_Cfg.DeviceName, "DIN", addr, "False", Response[i].ToString());
                                 }
                             }
-                            else
-                            {
-                                DIN.TryAdd(i, Response[i]);
-                                _Report.On_Data_Chnaged(_Cfg.DeviceName, "DIN", i.ToString(), "False", Response[i].ToString());
-                            }
+                            idx++;
+                            StartNo++;
                         }
                     }
 
@@ -126,16 +142,16 @@ namespace DIOControl.Controller
         {
             try
             {
-
-                ushort adr = Convert.ToUInt16(Address);
+                string hwid = Address.Split(',')[0];
+                string addr = Address.Split(',')[1];
+                int adr = Convert.ToUInt16(addr)+1;
                 bool boolVal = false;
                 if (bool.TryParse(Value, out boolVal))
                 {
-                    bool[] Response;
-
                     lock (conn)
                     {
-                        conn.Send("$1SET:RELIO:17" + Convert.ToInt16(Address).ToString("00") + "," + (boolVal ? "1" : "0") + "\r");
+                        Waiting = true;
+                        conn.Send("$1SET:RELIO:" + hwid + "0" + adr.ToString() + "," + (boolVal ? "1" : "0") + "\r");
                         SpinWait.SpinUntil(() => !Waiting, 5000);
                         if (Waiting)
                         {
@@ -147,18 +163,18 @@ namespace DIOControl.Controller
 
 
                     bool org;
-                    if (DOUT.TryGetValue(adr, out org))
+                    if (DOUT.TryGetValue(Address, out org))
                     {
                         if (!org.Equals(boolVal))
                         {
-                            DOUT.TryUpdate(adr, boolVal, org);
-                            _Report.On_Data_Chnaged(_Cfg.DeviceName, "DOUT", adr.ToString(), org.ToString(), boolVal.ToString());
+                            DOUT.TryUpdate(Address, boolVal, org);
+                            _Report.On_Data_Chnaged(_Cfg.DeviceName, "DOUT", Address, org.ToString(), boolVal.ToString());
                         }
                     }
                     else
                     {
-                        DOUT.TryAdd(adr, boolVal);
-                        _Report.On_Data_Chnaged(_Cfg.DeviceName, "DOUT", adr.ToString(), "N/A", boolVal.ToString());
+                        DOUT.TryAdd(Address, boolVal);
+                        _Report.On_Data_Chnaged(_Cfg.DeviceName, "DOUT", Address, "N/A", boolVal.ToString());
                     }
                 }
 
@@ -173,23 +189,25 @@ namespace DIOControl.Controller
         {
             try
             {
-                ushort adr = Convert.ToUInt16(Address);
+                string hwid = Address.Split(',')[0];
+                string addr = Address.Split(',')[1];
+                ushort adr = Convert.ToUInt16(addr);
                 bool boolVal = false;
                 if (bool.TryParse(Value, out boolVal))
                 {
                     bool org;
-                    if (DOUT.TryGetValue(adr, out org))
+                    if (DOUT.TryGetValue(Address, out org))
                     {
                         if (org != bool.Parse(Value))
                         {
-                            DOUT.TryUpdate(adr, bool.Parse(Value), org);
-                            _Report.On_Data_Chnaged(_Cfg.DeviceName, "DOUT", adr.ToString(), org.ToString(), bool.Parse(Value).ToString());
+                            DOUT.TryUpdate(Address, bool.Parse(Value), org);
+                            _Report.On_Data_Chnaged(_Cfg.DeviceName, "DOUT", Address, org.ToString(), bool.Parse(Value).ToString());
                         }
                     }
                     else
                     {
-                        DOUT.TryAdd(adr, bool.Parse(Value));
-                        _Report.On_Data_Chnaged(_Cfg.DeviceName, "DOUT", adr.ToString(), "N/A", bool.Parse(Value).ToString());
+                        DOUT.TryAdd(Address, bool.Parse(Value));
+                        _Report.On_Data_Chnaged(_Cfg.DeviceName, "DOUT", Address, "N/A", bool.Parse(Value).ToString());
                     }
                 }
             }
@@ -225,36 +243,50 @@ namespace DIOControl.Controller
         {
             try
             {
-                bool[] data = new bool[_Cfg.DigitalInputQuantity];
-                for (int i = 0; i < _Cfg.DigitalInputQuantity; i++)
+                Dictionary<string, bool[]> dioList = new Dictionary<string, bool[]>();
+                bool[] data;
+
+                foreach (KeyValuePair<string, bool> kvp in DOUT)
                 {
-                    bool val;
-                    if (DOUT.TryGetValue(i, out val))
+                    string hwid = kvp.Key.Split(',')[0];
+                    string addr = kvp.Key.Split(',')[1];
+                    if (dioList.TryGetValue(hwid, out data))
                     {
-                        data[i] = val;
+                        data[Convert.ToInt32(addr)] = kvp.Value;
                     }
                     else
                     {
-                        data[i] = false;
+                        data = new bool[_Cfg.DigitalInputQuantity];
+                        for (int i = 0; i < data.Length; i++)
+                        {//initial
+                            data[i] = false;
+                        }
+                        data[Convert.ToInt32(addr)] = kvp.Value;
+                        dioList.Add(hwid, data);
                     }
+
                 }
+
                 lock (conn)
                 {
-                    string result = "";
-                    foreach(bool each in data)
+                    
+                    foreach (KeyValuePair<string, bool[]> kvp in dioList)
                     {
-                        result += each ? "1" : "0";
+                        string result = "";
+                        foreach (bool each in kvp.Value)
+                        {
+                            result = (each ? "1" : "0") + result;//反向
+                        }
+
+                        Waiting = true;
+                        conn.Send("$1SET:BRDIO:" + kvp.Key + "," + BinaryStringToHexString(result) + "\r");
+                        SpinWait.SpinUntil(() => !Waiting, 5000);
+                        if (Waiting)
+                        {
+                            logger.Error("DIO SetOut error: Timeout");
+                            return;
+                        }
                     }
-
-
-                    conn.Send("$1SET:BRDIO:1,"+ BinaryStringToHexString(result) + "\r");
-                    SpinWait.SpinUntil(() => !Waiting, 5000);
-                    if (Waiting)
-                    {
-                        logger.Error("DIO SetOut error: Timeout");
-                        return;
-                    }
-
                 }
             }
             catch (Exception e)
@@ -269,9 +301,9 @@ namespace DIOControl.Controller
             try
             {
                 int key = Convert.ToInt32(Address);
-                if (DIN.ContainsKey(key))
+                if (DIN.ContainsKey(Address))
                 {
-                    if (!DIN.TryGetValue(key, out result))
+                    if (!DIN.TryGetValue(Address, out result))
                     {
                         throw new Exception("DeviceName:" + _Cfg.DeviceName + " Address " + Address + " get fail!");
                     }
@@ -290,11 +322,13 @@ namespace DIOControl.Controller
 
         public string GetOut(string Address)
         {
-
+            string hwid = Address.Split(',')[0];
+            string addr = Address.Split(',')[1];
             bool result = false;
             lock (conn)
             {
-                conn.Send("GET:RELIO:17" + Convert.ToInt16(Address).ToString("00") + "\r");
+                Waiting = true;
+                conn.Send("$1GET:RELIO:"+ hwid + "0" + (Convert.ToInt16(addr)+1).ToString() + "\r");
                 SpinWait.SpinUntil(() => !Waiting, 5000);
                 if (Waiting)
                 {
@@ -310,27 +344,32 @@ namespace DIOControl.Controller
 
         public void On_Connection_Message(object Msg)
         {
-            throw new NotImplementedException();
+            ReturnMsg = Msg.ToString().Replace("\r", "");
+            Waiting = false;
+
         }
 
         public void On_Connection_Connecting(string Msg)
         {
-            throw new NotImplementedException();
+            _Report.On_Connection_Status_Report(_Cfg.DeviceName, "Connecting");
         }
 
         public void On_Connection_Connected(object Msg)
         {
-            throw new NotImplementedException();
+            _Report.On_Connection_Status_Report(_Cfg.DeviceName, "Connected");
+            Thread ReceiveTd = new Thread(Polling);
+            ReceiveTd.IsBackground = true;
+            ReceiveTd.Start();
         }
 
         public void On_Connection_Disconnected(string Msg)
         {
-            throw new NotImplementedException();
+            _Report.On_Connection_Status_Report(_Cfg.DeviceName, "Disconnected");
         }
 
         public void On_Connection_Error(string Msg)
         {
-            throw new NotImplementedException();
+            _Report.On_Connection_Status_Report(_Cfg.DeviceName, "Error");
         }
     }
 }

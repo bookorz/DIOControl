@@ -43,9 +43,9 @@ namespace DIOControl.Comm
         /// 
         public SocketClient(IConnectionReport _ConnReport)
         {
-           
-           
 
+
+            ConnReport = _ConnReport;
             socketDataArrival = socketDataArrivalHandler;
             socketDisconnected = socketDisconnectedHandler;
 

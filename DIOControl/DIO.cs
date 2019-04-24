@@ -102,45 +102,51 @@ namespace DIOControl
                 IDIOController eachCtrl = null;
                 if (each.Enable)
                 {
+                    var find = from Param in Params.Values.ToList()
+                               where Param.DeviceName.ToUpper().Equals(each.DeviceName.ToUpper())
+                               select Param;
+                    foreach (ParamConfig eachDio in find)
+                    {
+                        if (eachDio.Type.ToUpper().Equals("DIN") || eachDio.Type.ToUpper().Equals("DOUT"))
+                        {
+                            each.Digital = true;
+                        }
+                        else if (eachDio.Type.ToUpper().Equals("AIN") || eachDio.Type.ToUpper().Equals("AOUT"))
+                        {
+                            each.Analog = true;
+                        }
+                    }
+
+                    find = from Param in Controls.Values.ToList()
+                           where Param.DeviceName.ToUpper().Equals(each.DeviceName.ToUpper())
+                           select Param;
+                    foreach (ParamConfig eachDio in find)
+                    {
+                        if (eachDio.Type.ToUpper().Equals("DIN") || eachDio.Type.ToUpper().Equals("DOUT"))
+                        {
+                            each.Digital = true;
+                        }
+                        else if (eachDio.Type.ToUpper().Equals("AIN") || eachDio.Type.ToUpper().Equals("AOUT"))
+                        {
+                            each.Analog = true;
+                        }
+                    }
+
+
+                    each.slaveID = 1;
+                    each.DigitalInputQuantity = 8;
+                    each.Delay = 100;
+                    each.ReadTimeout = 1000;
                     switch (each.Vendor)
                     {
                         case "ICPCONDIGITAL":
-                            var find = from Param in Params.Values.ToList()
-                                       where Param.DeviceName.ToUpper().Equals(each.DeviceName.ToUpper())
-                                       select Param;
-                            foreach(ParamConfig eachDio in find)
-                            {
-                                if (eachDio.Type.ToUpper().Equals("DIN") || eachDio.Type.ToUpper().Equals("DOUT"))
-                                {
-                                    each.Digital = true;
-                                }
-                                else if (eachDio.Type.ToUpper().Equals("AIN") || eachDio.Type.ToUpper().Equals("AOUT"))
-                                {
-                                    each.Analog = true;
-                                }
-                            }
-
-                            find = from Param in Controls.Values.ToList()
-                                   where Param.DeviceName.ToUpper().Equals(each.DeviceName.ToUpper())
-                                   select Param;
-                            foreach (ParamConfig eachDio in find)
-                            {
-                                if (eachDio.Type.ToUpper().Equals("DIN") || eachDio.Type.ToUpper().Equals("DOUT"))
-                                {
-                                    each.Digital = true;
-                                }
-                                else if (eachDio.Type.ToUpper().Equals("AIN") || eachDio.Type.ToUpper().Equals("AOUT"))
-                                {
-                                    each.Analog = true;
-                                }
-                            }
-
-
-                            each.slaveID = 1;
-                            each.DigitalInputQuantity = 8;
-                            each.Delay = 100;
-                            each.ReadTimeout = 1000;
+                            
                             eachCtrl = new ICPconDigitalController(each, this);
+
+                            break;
+                        case "SANWADIGITAL":
+
+                            eachCtrl = new SanwaDigitalController(each, this);
 
                             break;
                     }
@@ -234,7 +240,7 @@ namespace DIOControl
                     IDIOController ctrl;
                     if (Ctrls.TryGetValue(ctrlCfg.DeviceName, out ctrl))
                     {
-                        ChangeHisRecord.New(ctrlCfg.DeviceName, ctrlCfg.Type, ctrlCfg.Address, ctrlCfg.Parameter, Value, ctrlCfg.Status);
+                        //ChangeHisRecord.New(ctrlCfg.DeviceName, ctrlCfg.Type, ctrlCfg.Address, ctrlCfg.Parameter, Value, ctrlCfg.Status);
                         ctrlCfg.Status = Value;
                         ctrl.SetOut(ctrlCfg.Address, Value);
                         _Report.On_Data_Chnaged(Parameter, Value);
@@ -374,7 +380,7 @@ namespace DIOControl
             string result = "";
             try
             {
-                if (Type.Equals("OUT"))
+                if (Type.Equals("DOUT"))
                 {
                     ParamConfig outCfg;
                     if (Controls.TryGetValue(Parameter, out outCfg))
@@ -483,7 +489,7 @@ namespace DIOControl
                 {
                     if (cfg.DeviceName.Equals(DIOName))
                     {
-                        _Report.On_Data_Chnaged(cfg.Parameter, GetIO("OUT", cfg.Parameter));
+                        _Report.On_Data_Chnaged(cfg.Parameter, GetIO("DOUT", cfg.Parameter));
                     }
                 }
             }
