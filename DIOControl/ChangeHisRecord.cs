@@ -20,23 +20,23 @@ namespace DIOControl
 
             try
             {
-                DateTime SendTime = DateTime.Now;
+                //DateTime SendTime = DateTime.Now;
 
 
-                string SQL = @"insert into log_dio_event (dio_name,dio_type,address,parameter,new_value,old_value,event_time,time_stamp)
-                                    values(@dio_name,@dio_type,@address,@parameter,@new_value,@old_value,@event_time,@time_stamp)";
+                //string SQL = @"insert into log_dio_event (dio_name,dio_type,address,parameter,new_value,old_value,event_time,time_stamp)
+                //                    values(@dio_name,@dio_type,@address,@parameter,@new_value,@old_value,@event_time,@time_stamp)";
 
-                keyValues.Add("@dio_name", dio_name);
-                keyValues.Add("@dio_type", dio_type);
-                keyValues.Add("@address", address);
-                keyValues.Add("@parameter", parameter);
-                keyValues.Add("@new_value", new_value.ToUpper());
-                keyValues.Add("@old_value", old_value.ToUpper());
-                keyValues.Add("@event_time", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.ffffff"));
-                keyValues.Add("@time_stamp", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.ffffff"));
+                //keyValues.Add("@dio_name", dio_name);
+                //keyValues.Add("@dio_type", dio_type);
+                //keyValues.Add("@address", address);
+                //keyValues.Add("@parameter", parameter);
+                //keyValues.Add("@new_value", new_value.ToUpper());
+                //keyValues.Add("@old_value", old_value.ToUpper());
+                //keyValues.Add("@event_time", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.ffffff"));
+                //keyValues.Add("@time_stamp", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.ffffff"));
 
-                dBUtil.ExecuteNonQueryAsync(SQL, keyValues);
-               
+                //dBUtil.ExecuteNonQueryAsync(SQL, keyValues);
+                logger.Info("dio_name:"+ dio_name + ",dio_type:"+ dio_type + ",address:"+ address + ",parameter:"+ parameter + ",new_value:"+ new_value + ",old_value:"+ old_value);
 
             }
             catch (Exception e)

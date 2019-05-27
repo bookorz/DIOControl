@@ -188,7 +188,7 @@ namespace DIOControl
                         {
                             logger.Error(e.StackTrace);
                         }
-                        _Report.On_Data_Chnaged(each.Parameter, Current);
+                        _Report.On_Data_Chnaged(each.Parameter, Current,each.Type);
                     }
                     else
                     {
@@ -243,7 +243,7 @@ namespace DIOControl
                         //ChangeHisRecord.New(ctrlCfg.DeviceName, ctrlCfg.Type, ctrlCfg.Address, ctrlCfg.Parameter, Value, ctrlCfg.Status);
                         ctrlCfg.Status = Value;
                         ctrl.SetOut(ctrlCfg.Address, Value);
-                        _Report.On_Data_Chnaged(Parameter, Value);
+                        _Report.On_Data_Chnaged(Parameter, Value, ctrlCfg.Type);
                     }
                     else
                     {
@@ -281,7 +281,7 @@ namespace DIOControl
                         }
                         ctrlCfg.Status = Value;
                         ctrl.SetOutWithoutUpdate(ctrlCfg.Address, Value);
-                        _Report.On_Data_Chnaged(key, Value);
+                        _Report.On_Data_Chnaged(key, Value, ctrlCfg.Type);
                         if (!DIOList.ContainsKey(ctrlCfg.DeviceName))
                         {
                             DIOList.Add(ctrlCfg.DeviceName, ctrl);
@@ -318,7 +318,7 @@ namespace DIOControl
                             ChangeHisRecord.New(ctrlCfg.DeviceName, ctrlCfg.Type, ctrlCfg.Address, ctrlCfg.Parameter, "Blink", ctrlCfg.Status);
                         }
                         ctrlCfg.Status = "Blink";
-                        _Report.On_Data_Chnaged(Parameter, "BLINK");
+                        _Report.On_Data_Chnaged(Parameter, "BLINK", ctrlCfg.Type);
                     }
                     else
                     {
@@ -327,7 +327,7 @@ namespace DIOControl
                             ChangeHisRecord.New(ctrlCfg.DeviceName, ctrlCfg.Type, ctrlCfg.Address, ctrlCfg.Parameter, "False", ctrlCfg.Status);
                         }
                         ctrlCfg.Status = "False";
-                        _Report.On_Data_Chnaged(Parameter, "FALSE");
+                        _Report.On_Data_Chnaged(Parameter, "FALSE", ctrlCfg.Type);
                     }
 
                 }
@@ -455,7 +455,7 @@ namespace DIOControl
                     }
                 }
 
-                _Report.On_Data_Chnaged(param.Parameter, NewValue);
+                _Report.On_Data_Chnaged(param.Parameter, NewValue, param.Type);
                 //if (Type.Equals("IN"))
                 //{
                 //    ChangeHisRecord.New(DIOName, Type, Address, param.Parameter, NewValue, OldValue);
@@ -489,9 +489,13 @@ namespace DIOControl
                 {
                     if (cfg.DeviceName.Equals(DIOName))
                     {
-                        _Report.On_Data_Chnaged(cfg.Parameter, GetIO("DOUT", cfg.Parameter));
+                        _Report.On_Data_Chnaged(cfg.Parameter, GetIO("DOUT", cfg.Parameter), cfg.Type);
                     }
                 }
+            }
+            else if (Status.Equals("Timeout"))
+            {
+                _Report.On_Alarm_Happen("DIO", "S0300176");
             }
             _Report.On_Connection_Status_Report(DIOName, Status);
         }

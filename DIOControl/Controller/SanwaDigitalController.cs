@@ -14,12 +14,13 @@ namespace DIOControl.Controller
 {
     class SanwaDigitalController : IDIOController, IConnectionReport
     {
-        ILog logger = LogManager.GetLogger(typeof(ICPconDigitalController));
+        ILog logger = LogManager.GetLogger(typeof(SanwaDigitalController));
         IDIOReport _Report;
         CtrlConfig _Cfg;
         SocketClient conn;
         bool Waiting = false;
         string ReturnMsg = "";
+        public string status = "";
 
         ConcurrentDictionary<string, bool> DIN = new ConcurrentDictionary<string, bool>();
         ConcurrentDictionary<string, bool> DOUT = new ConcurrentDictionary<string, bool>();
@@ -42,6 +43,7 @@ namespace DIOControl.Controller
             {
 
             }
+            status = "Disconnect";
             _Report.On_Connection_Status_Report(_Cfg.DeviceName, "Disconnect");
         }
 
@@ -79,11 +81,14 @@ namespace DIOControl.Controller
                             Waiting = true;
                             conn.Send("$1GET:BRDIO:17,1,3\r");
                             SpinWait.SpinUntil(() => !Waiting, 50000);
-                            if (Waiting)
+                            if (Waiting && !status.Equals("Timeout"))
                             {
                                 logger.Error("DIO polling error: Timeout");
+                                _Report.On_Connection_Status_Report(_Cfg.DeviceName, "Timeout");
+                                status = "Timeout";
                                 continue;
                             }
+                            
                             string orgAry = ReturnMsg.Split(':')[2];
                             
                             valAry = orgAry.Split(',');
@@ -107,7 +112,7 @@ namespace DIOControl.Controller
                             }
                             for (int i = 0; i < _Cfg.DigitalInputQuantity; i++)
                             {
-                                string addr = StartNo.ToString("00")+"," + i.ToString();
+                                string addr = StartNo.ToString("00")+"," + (i+1).ToString();
                                 if (DIN.ContainsKey(addr))
                                 {
                                     bool org;
@@ -144,7 +149,7 @@ namespace DIOControl.Controller
             {
                 string hwid = Address.Split(',')[0];
                 string addr = Address.Split(',')[1];
-                int adr = Convert.ToUInt16(addr)+1;
+                int adr = Convert.ToUInt16(addr);
                 bool boolVal = false;
                 if (bool.TryParse(Value, out boolVal))
                 {
@@ -153,9 +158,11 @@ namespace DIOControl.Controller
                         Waiting = true;
                         conn.Send("$1SET:RELIO:" + hwid + "0" + adr.ToString() + "," + (boolVal ? "1" : "0") + "\r");
                         SpinWait.SpinUntil(() => !Waiting, 5000);
-                        if (Waiting)
+                        if (Waiting && !status.Equals("Timeout"))
                         {
                             logger.Error("DIO SetOut error: Timeout");
+                            _Report.On_Connection_Status_Report(_Cfg.DeviceName, "Timeout");
+                            status = "Timeout";
                             return;
                         }
 
@@ -252,7 +259,7 @@ namespace DIOControl.Controller
                     string addr = kvp.Key.Split(',')[1];
                     if (dioList.TryGetValue(hwid, out data))
                     {
-                        data[Convert.ToInt32(addr)] = kvp.Value;
+                        data[Convert.ToInt32(addr)-1] = kvp.Value;
                     }
                     else
                     {
@@ -261,7 +268,7 @@ namespace DIOControl.Controller
                         {//initial
                             data[i] = false;
                         }
-                        data[Convert.ToInt32(addr)] = kvp.Value;
+                        data[Convert.ToInt32(addr)-1] = kvp.Value;
                         dioList.Add(hwid, data);
                     }
 
@@ -281,9 +288,11 @@ namespace DIOControl.Controller
                         Waiting = true;
                         conn.Send("$1SET:BRDIO:" + kvp.Key + "," + BinaryStringToHexString(result) + "\r");
                         SpinWait.SpinUntil(() => !Waiting, 5000);
-                        if (Waiting)
+                        if (Waiting && !status.Equals("Timeout"))
                         {
                             logger.Error("DIO SetOut error: Timeout");
+                            _Report.On_Connection_Status_Report(_Cfg.DeviceName, "Timeout");
+                            status = "Timeout";
                             return;
                         }
                     }
@@ -328,11 +337,13 @@ namespace DIOControl.Controller
             lock (conn)
             {
                 Waiting = true;
-                conn.Send("$1GET:RELIO:"+ hwid + "0" + (Convert.ToInt16(addr)+1).ToString() + "\r");
+                conn.Send("$1GET:RELIO:"+ hwid + "0" + (Convert.ToInt16(addr)).ToString() + "\r");
                 SpinWait.SpinUntil(() => !Waiting, 5000);
-                if (Waiting)
+                if (Waiting && !status.Equals("Timeout"))
                 {
                     logger.Error("DIO GetOut error: Timeout");
+                    _Report.On_Connection_Status_Report(_Cfg.DeviceName, "Timeout");
+                    status = "Timeout";
                     throw new Exception("DIO GetOut error: Timeout");
                 }
                 string boolStr = ReturnMsg.Split(':')[2];
@@ -352,11 +363,13 @@ namespace DIOControl.Controller
         public void On_Connection_Connecting(string Msg)
         {
             _Report.On_Connection_Status_Report(_Cfg.DeviceName, "Connecting");
+            status = "Connecting";
         }
 
         public void On_Connection_Connected(object Msg)
         {
             _Report.On_Connection_Status_Report(_Cfg.DeviceName, "Connected");
+            status = "Connected";
             Thread ReceiveTd = new Thread(Polling);
             ReceiveTd.IsBackground = true;
             ReceiveTd.Start();
@@ -365,11 +378,13 @@ namespace DIOControl.Controller
         public void On_Connection_Disconnected(string Msg)
         {
             _Report.On_Connection_Status_Report(_Cfg.DeviceName, "Disconnected");
+            status = "Disconnected";
         }
 
         public void On_Connection_Error(string Msg)
         {
             _Report.On_Connection_Status_Report(_Cfg.DeviceName, "Error");
+            status = "Error";
         }
     }
 }
