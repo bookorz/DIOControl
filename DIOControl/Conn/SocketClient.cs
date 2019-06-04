@@ -56,6 +56,11 @@ namespace DIOControl.Comm
             checkSocketState();
             //ThreadPool.QueueUserWorkItem(new WaitCallback(FirstCheck));
         }
+        public void Start(object obj)
+        {
+            checkSocketState();
+            //ThreadPool.QueueUserWorkItem(new WaitCallback(FirstCheck));
+        }
 
         public void WaitForData(bool Enable)
         {

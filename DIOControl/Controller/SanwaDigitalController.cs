@@ -55,8 +55,8 @@ namespace DIOControl.Controller
                 conn.remoteHost = _Cfg.IPAdress;
                 conn.remotePort = _Cfg.Port;
                 conn.Vendor = "SANWA";
-                conn.Start();
-
+                
+                ThreadPool.QueueUserWorkItem(new WaitCallback(conn.Start));
 
             }
             catch (Exception e)
@@ -309,7 +309,7 @@ namespace DIOControl.Controller
             bool result = false;
             try
             {
-                int key = Convert.ToInt32(Address);
+                //int key = Convert.ToInt32(Address);
                 if (DIN.ContainsKey(Address))
                 {
                     if (!DIN.TryGetValue(Address, out result))
