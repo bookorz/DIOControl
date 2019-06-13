@@ -140,7 +140,7 @@ namespace DIOControl
                     switch (each.Vendor)
                     {
                         case "ICPCONDIGITAL":
-                            
+
                             eachCtrl = new ICPconDigitalController(each, this);
 
                             break;
@@ -188,7 +188,12 @@ namespace DIOControl
                         {
                             logger.Error(e.StackTrace);
                         }
-                        _Report.On_Data_Chnaged(each.Parameter, Current,each.Type);
+                        new Thread(() =>
+                        {
+                            Thread.CurrentThread.IsBackground = true;
+                            _Report.On_Data_Chnaged(each.Parameter, Current, each.Type);
+                        }).Start();
+
                     }
                     else
                     {
@@ -243,7 +248,12 @@ namespace DIOControl
                         //ChangeHisRecord.New(ctrlCfg.DeviceName, ctrlCfg.Type, ctrlCfg.Address, ctrlCfg.Parameter, Value, ctrlCfg.Status);
                         ctrlCfg.Status = Value;
                         ctrl.SetOut(ctrlCfg.Address, Value);
-                        _Report.On_Data_Chnaged(Parameter, Value, ctrlCfg.Type);
+                        new Thread(() =>
+                        {
+                            Thread.CurrentThread.IsBackground = true;
+                            _Report.On_Data_Chnaged(Parameter, Value, ctrlCfg.Type);
+                        }).Start();
+
                     }
                     else
                     {
@@ -281,7 +291,12 @@ namespace DIOControl
                         }
                         ctrlCfg.Status = Value;
                         ctrl.SetOutWithoutUpdate(ctrlCfg.Address, Value);
-                        _Report.On_Data_Chnaged(key, Value, ctrlCfg.Type);
+                        new Thread(() =>
+                        {
+                            Thread.CurrentThread.IsBackground = true;
+                            _Report.On_Data_Chnaged(key, Value, ctrlCfg.Type);
+                        }).Start();
+
                         if (!DIOList.ContainsKey(ctrlCfg.DeviceName))
                         {
                             DIOList.Add(ctrlCfg.DeviceName, ctrl);
@@ -318,7 +333,12 @@ namespace DIOControl
                             ChangeHisRecord.New(ctrlCfg.DeviceName, ctrlCfg.Type, ctrlCfg.Address, ctrlCfg.Parameter, "Blink", ctrlCfg.Status);
                         }
                         ctrlCfg.Status = "Blink";
-                        _Report.On_Data_Chnaged(Parameter, "BLINK", ctrlCfg.Type);
+                        new Thread(() =>
+                        {
+                            Thread.CurrentThread.IsBackground = true;
+                            _Report.On_Data_Chnaged(Parameter, "BLINK", ctrlCfg.Type);
+                        }).Start();
+
                     }
                     else
                     {
@@ -327,7 +347,12 @@ namespace DIOControl
                             ChangeHisRecord.New(ctrlCfg.DeviceName, ctrlCfg.Type, ctrlCfg.Address, ctrlCfg.Parameter, "False", ctrlCfg.Status);
                         }
                         ctrlCfg.Status = "False";
-                        _Report.On_Data_Chnaged(Parameter, "FALSE", ctrlCfg.Type);
+                        new Thread(() =>
+                        {
+                            Thread.CurrentThread.IsBackground = true;
+                            _Report.On_Data_Chnaged(Parameter, "FALSE", ctrlCfg.Type);
+                        }).Start();
+
                     }
 
                 }
@@ -443,7 +468,12 @@ namespace DIOControl
                                 if (t.TotalSeconds > 1)
                                 {
                                     param.LastErrorHappenTime = DateTime.Now;
-                                    _Report.On_Alarm_Happen(param.Parameter, param.Error_Code);
+                                    new Thread(() =>
+                                    {
+                                        Thread.CurrentThread.IsBackground = true;
+                                        _Report.On_Alarm_Happen(param.Parameter, param.Error_Code);
+                                    }).Start();
+
                                 }
 
                             }
@@ -454,8 +484,12 @@ namespace DIOControl
                         NewValue = "TRUE";
                     }
                 }
+                new Thread(() =>
+                {
+                    Thread.CurrentThread.IsBackground = true;
+                    _Report.On_Data_Chnaged(param.Parameter, NewValue, param.Type);
+                }).Start();
 
-                _Report.On_Data_Chnaged(param.Parameter, NewValue, param.Type);
                 //if (Type.Equals("IN"))
                 //{
                 //    ChangeHisRecord.New(DIOName, Type, Address, param.Parameter, NewValue, OldValue);
@@ -489,15 +523,30 @@ namespace DIOControl
                 {
                     if (cfg.DeviceName.Equals(DIOName))
                     {
-                        _Report.On_Data_Chnaged(cfg.Parameter, GetIO("DOUT", cfg.Parameter), cfg.Type);
+                        new Thread(() =>
+                        {
+                            Thread.CurrentThread.IsBackground = true;
+                            _Report.On_Data_Chnaged(cfg.Parameter, GetIO("DOUT", cfg.Parameter), cfg.Type);
+                        }).Start();
+
                     }
                 }
             }
             else if (Status.Equals("Timeout"))
             {
-                _Report.On_Alarm_Happen("DIO", "S0300176");
+                new Thread(() =>
+                {
+                    Thread.CurrentThread.IsBackground = true;
+                    _Report.On_Alarm_Happen("DIO", "S0300176");
+                }).Start();
+
             }
-            _Report.On_Connection_Status_Report(DIOName, Status);
+            new Thread(() =>
+            {
+                Thread.CurrentThread.IsBackground = true;
+                _Report.On_Connection_Status_Report(DIOName, Status);
+            }).Start();
+
         }
     }
 }

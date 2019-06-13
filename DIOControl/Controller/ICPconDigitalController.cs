@@ -170,7 +170,10 @@ namespace DIOControl.Controller
                                     {
                                         AIN.TryUpdate(i, Response2[i], org);
                                     }
+                                    
                                     _Report.On_Data_Chnaged(_Cfg.DeviceName, "AIN", i.ToString(), ((Convert.ToDouble(org) * 10.0 / 32767.0 - 1.0) / 4.0 * 50.0).ToString(), ((Convert.ToDouble(Response2[i]) * 10.0 / 32767.0 - 1.0) / 4.0 * 50.0).ToString().Substring(0, ((Convert.ToDouble(Response2[i]) * 10.0 / 32767.0 - 1.0) / 4.0 * 50.0).ToString().IndexOf(".") + 2));
+                                    //_Report.On_Data_Chnaged(_Cfg.DeviceName, "AIN", i.ToString(), ((Convert.ToDouble(org) * 10.0 / 32767.0 ) ).ToString(), ((Convert.ToDouble(Response2[i]) * 10.0 / 32767.0 ) ).ToString().Substring(0, ((Convert.ToDouble(Response2[i]) * 10.0 / 32767.0 )).ToString().IndexOf(".") + 2));
+
                                 }
                                 else
                                 {
